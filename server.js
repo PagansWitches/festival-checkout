@@ -3,14 +3,12 @@ const app = express();
 const { resolve } = require('path');
 require('dotenv').config({ path: './.env' });
 
-const baseUrl = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
-
-const stripe = require('stripe')('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', {
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2020-08-27',
   appInfo: {
     name: "FestivalTicketCheckout",
     version: "1.0.0",
-    url: "https://replit.com/@PagansWitches26/Festival-Ticket-Checkout"
+    url: "https://festival-checkout.onrender.com"
   }
 });
 
@@ -18,7 +16,7 @@ app.use(express.static("./client"));
 app.use(express.urlencoded());
 app.use(
   express.json({
-    verify: function(req, res, buf) {
+    verify: function (req, res, buf) {
       if (req.originalUrl.startsWith('/webhook')) {
         req.rawBody = buf.toString();
       }
@@ -42,7 +40,7 @@ app.post('/create-checkout-session', async (req, res) => {
     mode: 'payment',
     line_items: [{
       price_data: {
-        unit_amount: 0,
+        unit_amount: 500, // £5.00 in pence
         currency: 'gbp',
         product_data: {
           name: 'QR Code Generation',
@@ -52,7 +50,7 @@ app.post('/create-checkout-session', async (req, res) => {
       quantity: 1,
     }],
     success_url: `${process.env.DOMAIN}`,
-    cancel_url: `${baseUrl}/canceled.html`
+    cancel_url: `${process.env.DOMAIN}`
   });
 
   return res.redirect(303, session.url);

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Festival Ticket Payment</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin-top: 80px;
+        background-color: #fffaf5;
+      }
+      img {
+        max-width: 200px;
+        margin-bottom: 20px;
+      }
+      h3 {
+        margin-bottom: 10px;
+      }
+      button {
+        background-color: #ff69b4;
+        border: none;
+        color: white;
+        padding: 12px 24px;
+        text-align: center;
+        text-decoration: none;
+        font-size: 16px;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #ff1493;
+      }
+    </style>
+  </head>
+  <body>
+    <img src="https://i.ibb.co/Gv799yR9/1-D726-CB4-E131-42-B4-AF10-81146-A1-D601-D.png" alt="Festival Logo">
+    <h3>Customise Your Festival Tickets</h3>
+    <p>This step is required to generate your unique QR code and continue your booking.</p>
+    <form action="/create-checkout-session" method="POST">
+      <button type="submit">Start Ticket Purchase</button>
+    </form>
+  </body>
+</html>

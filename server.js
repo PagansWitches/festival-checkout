@@ -49,8 +49,8 @@ app.post('/create-checkout-session', async (req, res) => {
       },
       quantity: 1,
     }],
-    success_url: 'https://afestivalforpagansandwitches.co.uk/success',
-    cancel_url: 'https://afestivalforpagansandwitches.co.uk/cancel'
+    success_url: 'https://festival-checkout.onrender.com/success.html',
+    cancel_url: 'https://festival-checkout.onrender.com',
   });
 
   return res.redirect(303, session.url);

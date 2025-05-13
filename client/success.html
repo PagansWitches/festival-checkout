@@ -1,60 +1,40 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-    <title>Stripe Checkout Sample</title>
-
-    <link rel="icon" href="favicon.ico" type="image/x-icon" />
-    <link rel="stylesheet" href="css/normalize.css" />
-    <link rel="stylesheet" href="css/global.css" />
-    <script src="./success.js" defer></script>
-  </head>
-
-  <body>
-    <div class="sr-root">
-      <div class="sr-main">
-        <header class="sr-header">
-          <div class="sr-header__logo"></div>
-        </header>
-
-        <div class="sr-payment-summary completed-view">
-          <h1>Your payment succeeded</h1>
-          <h4>View CheckoutSession response:</h4>
-        </div>
-        <div class="sr-section completed-view">
-          <div class="sr-callout">
-            <pre></pre>
-          </div>
-          <button onclick="window.location.href = '/';">Restart demo</button>
-        </div>
-      </div>
-
-      <div class="sr-content">
-        <div class="pasha-image-stack">
-          <img
-            src="https://picsum.photos/280/320?random=1"
-            width="140"
-            height="160"
-          />
-          <img
-            src="https://picsum.photos/280/320?random=2"
-            width="140"
-            height="160"
-          />
-          <img
-            src="https://picsum.photos/280/320?random=3"
-            width="140"
-            height="160"
-          />
-          <img
-            src="https://picsum.photos/280/320?random=4"
-            width="140"
-            height="160"
-          />
-        </div>
-      </div>
-    </div>
-  </body>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Thank You for Your Purchase!</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f2f2f2;
+      padding: 40px;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      display: inline-block;
+      max-width: 600px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+    img {
+      max-width: 100%;
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #4CAF50;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="https://i.ibb.co/Gv799yR9/1-D726-CB4-E131-42-B4-AF10-81146-A1-D601-D.png" alt="Festival Logo">
+    <h1>Thank You for Booking!</h1>
+    <p>Your payment was successful, and your ticket has been emailed to you.</p>
+    <p>Please check your inbox (and spam folder) for your QR code and festival info.</p>
+    <p>Need help? Contact us at <a href="mailto:tickets@afestivalforpagansandwitches.co.uk">tickets@afestivalforpagansandwitches.co.uk</a></p>
+  </div>
+</body>
 </html>

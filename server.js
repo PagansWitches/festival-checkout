@@ -49,8 +49,8 @@ app.post('/create-checkout-session', async (req, res) => {
       },
       quantity: 1,
     }],
-    success_url: `${process.env.DOMAIN}`,
-    cancel_url: `${process.env.DOMAIN}`
+    success_url: 'https://afestivalforpagansandwitches.co.uk/success',
+    cancel_url: 'https://afestivalforpagansandwitches.co.uk/cancel'
   });
 
   return res.redirect(303, session.url);

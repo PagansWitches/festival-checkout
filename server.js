@@ -36,11 +36,21 @@ app.get('/checkout-session', async (req, res) => {
 });
 
 app.post('/create-checkout-session', async (req, res) => {
+  const { name, email, phone, address, ...tickets } = req.body;
+
+  const metadata = {
+    name,
+    email,
+    phone,
+    address,
+    ...tickets
+  };
+
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
     line_items: [{
       price_data: {
-        unit_amount: 500, // £5.00 in pence
+        unit_amount: 500,
         currency: 'gbp',
         product_data: {
           name: 'QR Code Generation',
@@ -49,8 +59,9 @@ app.post('/create-checkout-session', async (req, res) => {
       },
       quantity: 1,
     }],
-    success_url: 'https://festival-checkout.onrender.com/success.html',
-    cancel_url: 'https://festival-checkout.onrender.com',
+    metadata,
+    success_url: 'https://afestivalforpagansandwitches.co.uk/success',
+    cancel_url: 'https://afestivalforpagansandwitches.co.uk/cancel'
   });
 
   return res.redirect(303, session.url);
@@ -77,7 +88,29 @@ app.post('/webhook', async (req, res) => {
   }
 
   if (event.type === 'checkout.session.completed') {
-    console.log(`🔔  Payment received!`);
+    const session = event.data.object;
+    const metadata = session.metadata;
+
+    const params = new URLSearchParams();
+    for (const key in metadata) {
+      if (metadata.hasOwnProperty(key)) {
+        params.append(key, metadata[key]);
+      }
+    }
+
+    // SEND to your Google Script Web App
+    const webhookUrl = "https://script.google.com/macros/s/AKfycbylCZoxye71c5LAp-tGoiycMhBSxQGQr0a2enGwPFdiokO4DdsGmBGbhrmOTEIB-Q-E/exec";
+
+    try {
+      await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: params.toString()
+      });
+      console.log("✅ Data sent to Google Sheets");
+    } catch (error) {
+      console.error("❌ Failed to send data to Google Sheets:", error);
+    }
   }
 
   res.sendStatus(200);

@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const { resolve } = require('path');
+const axios = require('axios');
 require('dotenv').config({ path: './.env' });
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY, {
@@ -13,7 +14,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY, {
 });
 
 app.use(express.static("./client"));
-app.use(express.urlencoded());
+app.use(express.urlencoded({ extended: true }));
 app.use(
   express.json({
     verify: function (req, res, buf) {
@@ -24,27 +25,9 @@ app.use(
   })
 );
 
-app.get('/', (req, res) => {
-  const path = resolve('./client/index.html');
-  res.sendFile(path);
-});
-
-app.get('/checkout-session', async (req, res) => {
-  const { sessionId } = req.query;
-  const session = await stripe.checkout.sessions.retrieve(sessionId);
-  res.send(session);
-});
-
+// Checkout session creation
 app.post('/create-checkout-session', async (req, res) => {
-  const { name, email, phone, address, ...tickets } = req.body;
-
-  const metadata = {
-    name,
-    email,
-    phone,
-    address,
-    ...tickets
-  };
+  const metadata = req.body;
 
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
@@ -59,24 +42,23 @@ app.post('/create-checkout-session', async (req, res) => {
       },
       quantity: 1,
     }],
-    metadata,
-    success_url: 'https://afestivalforpagansandwitches.co.uk/success',
-    cancel_url: 'https://afestivalforpagansandwitches.co.uk/cancel'
+    metadata: metadata,
+    success_url: 'https://festival-checkout.onrender.com/success.html',
+    cancel_url: 'https://festival-checkout.onrender.com'
   });
 
   return res.redirect(303, session.url);
 });
 
+// Webhook to send data to Google Apps Script after successful payment
 app.post('/webhook', async (req, res) => {
   let event;
 
   if (process.env.STRIPE_WEBHOOK_SECRET) {
-    const signature = req.headers['stripe-signature'];
-
     try {
       event = stripe.webhooks.constructEvent(
         req.rawBody,
-        signature,
+        req.headers['stripe-signature'],
         process.env.STRIPE_WEBHOOK_SECRET
       );
     } catch (err) {
@@ -89,27 +71,13 @@ app.post('/webhook', async (req, res) => {
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
-    const metadata = session.metadata;
-
-    const params = new URLSearchParams();
-    for (const key in metadata) {
-      if (metadata.hasOwnProperty(key)) {
-        params.append(key, metadata[key]);
-      }
-    }
-
-    // SEND to your Google Script Web App
-    const webhookUrl = "https://script.google.com/macros/s/AKfycbylCZoxye71c5LAp-tGoiycMhBSxQGQr0a2enGwPFdiokO4DdsGmBGbhrmOTEIB-Q-E/exec";
+    const metadata = session.metadata || {};
 
     try {
-      await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: params.toString()
-      });
-      console.log("✅ Data sent to Google Sheets");
-    } catch (error) {
-      console.error("❌ Failed to send data to Google Sheets:", error);
+      await axios.post(process.env.GOOGLE_SCRIPT_URL, metadata);
+      console.log("✅ Data sent to Google Apps Script");
+    } catch (err) {
+      console.error("❌ Failed to send to Google Apps Script:", err.message);
     }
   }
 

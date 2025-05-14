@@ -39,6 +39,8 @@ app.get('/checkout-session', async (req, res) => {
 });
 
 app.post('/create-checkout-session', async (req, res) => {
+  const metadata = req.body; // grab all form data as metadata
+
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
     line_items: [{
@@ -52,6 +54,8 @@ app.post('/create-checkout-session', async (req, res) => {
       },
       quantity: 1,
     }],
+    metadata: metadata,
+    customer_email: metadata.email,
     success_url: `${process.env.DOMAIN}`,
     cancel_url: `${baseUrl}/canceled.html`
   });

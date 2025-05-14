@@ -1,23 +1,25 @@
 const express = require('express');
 const app = express();
 const { resolve } = require('path');
-const axios = require('axios');
 require('dotenv').config({ path: './.env' });
+const fetch = require('node-fetch');
 
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY, {
+const baseUrl = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+
+const stripe = require('stripe')('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', {
   apiVersion: '2020-08-27',
   appInfo: {
     name: "FestivalTicketCheckout",
     version: "1.0.0",
-    url: "https://festival-checkout.onrender.com"
+    url: "https://replit.com/@PagansWitches26/Festival-Ticket-Checkout"
   }
 });
 
 app.use(express.static("./client"));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded());
 app.use(
   express.json({
-    verify: function (req, res, buf) {
+    verify: function(req, res, buf) {
       if (req.originalUrl.startsWith('/webhook')) {
         req.rawBody = buf.toString();
       }
@@ -25,15 +27,23 @@ app.use(
   })
 );
 
-// Checkout session creation
-app.post('/create-checkout-session', async (req, res) => {
-  const metadata = req.body;
+app.get('/', (req, res) => {
+  const path = resolve('./client/index.html');
+  res.sendFile(path);
+});
 
+app.get('/checkout-session', async (req, res) => {
+  const { sessionId } = req.query;
+  const session = await stripe.checkout.sessions.retrieve(sessionId);
+  res.send(session);
+});
+
+app.post('/create-checkout-session', async (req, res) => {
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
     line_items: [{
       price_data: {
-        unit_amount: 500,
+        unit_amount: 0,
         currency: 'gbp',
         product_data: {
           name: 'QR Code Generation',
@@ -42,23 +52,23 @@ app.post('/create-checkout-session', async (req, res) => {
       },
       quantity: 1,
     }],
-    metadata: metadata,
-    success_url: 'https://festival-checkout.onrender.com/success.html',
-    cancel_url: 'https://festival-checkout.onrender.com'
+    success_url: `${process.env.DOMAIN}`,
+    cancel_url: `${baseUrl}/canceled.html`
   });
 
   return res.redirect(303, session.url);
 });
 
-// Webhook to send data to Google Apps Script after successful payment
 app.post('/webhook', async (req, res) => {
   let event;
 
   if (process.env.STRIPE_WEBHOOK_SECRET) {
+    const signature = req.headers['stripe-signature'];
+
     try {
       event = stripe.webhooks.constructEvent(
         req.rawBody,
-        req.headers['stripe-signature'],
+        signature,
         process.env.STRIPE_WEBHOOK_SECRET
       );
     } catch (err) {
@@ -70,14 +80,43 @@ app.post('/webhook', async (req, res) => {
   }
 
   if (event.type === 'checkout.session.completed') {
+    console.log(`🔔  Payment received!`);
+
     const session = event.data.object;
-    const metadata = session.metadata || {};
+
+    const name = session.metadata?.name || 'Unknown';
+    const email = session.customer_details?.email || 'no-email@example.com';
+    const phone = session.metadata?.phone || '';
+    const address = session.metadata?.address || '';
+    const ticketTypes = {
+      "3DayTicket": session.metadata?.["3DayTicket"] || 0,
+      "AdultSaturdayTicket": session.metadata?.["AdultSaturdayTicket"] || 0,
+      "AdultSundayTicket": session.metadata?.["AdultSundayTicket"] || 0,
+      "AdultMondayTicket": session.metadata?.["AdultMondayTicket"] || 0,
+      "ChildSaturdayTicket": session.metadata?.["ChildSaturdayTicket"] || 0,
+      "ChildSundayTicket": session.metadata?.["ChildSundayTicket"] || 0,
+      "ChildMondayTicket": session.metadata?.["ChildMondayTicket"] || 0,
+      "Disabled3DayTicket": session.metadata?.["Disabled3DayTicket"] || 0,
+      "DisabledSaturdayTicket": session.metadata?.["DisabledSaturdayTicket"] || 0,
+      "DisabledSundayTicket": session.metadata?.["DisabledSundayTicket"] || 0,
+      "DisabledMondayTicket": session.metadata?.["DisabledMondayTicket"] || 0
+    };
+
+    const queryParams = new URLSearchParams({
+      name,
+      email,
+      phone,
+      address,
+      ...ticketTypes
+    }).toString();
+
+    const appsScriptURL = `https://script.google.com/macros/s/AKfycbylCZoxye71c5LAp-tGoiycMhBSxQGQr0a2enGwPFdiokO4DdsGmBGbhrmOTEIB-Q-E/exec?${queryParams}`;
 
     try {
-      await axios.post(process.env.GOOGLE_SCRIPT_URL, metadata);
-      console.log("✅ Data sent to Google Apps Script");
-    } catch (err) {
-      console.error("❌ Failed to send to Google Apps Script:", err.message);
+      await fetch(appsScriptURL);
+      console.log("✅ Logged to Google Sheet");
+    } catch (error) {
+      console.error("❌ Failed to log to Google Sheet:", error);
     }
   }
 

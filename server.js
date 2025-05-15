@@ -91,7 +91,7 @@ app.post('/create-checkout-session', async (req, res) => {
       }],
       metadata: metadata,
       customer_email: metadata.email,
-      success_url: process.env.DOMAIN,
+      success_url: 'https://spectacular-tartufo-bceeb8.netlify.app/success.html',
       cancel_url: `${baseUrl}/canceled.html`
     });
 

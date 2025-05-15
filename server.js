@@ -148,7 +148,7 @@ app.post('/webhook', async (req, res) => {
       ...ticketTypes
     }).toString();
 
-    const appsScriptURL = `https://script.google.com/macros/s/AKfycbwDyrZTBcWI1c1lqauhuK9rE-AohH7ASLYCo5SAwQQ3nnd5bEw-EVENinnDkbER-726dA/exec?${queryParams}`;
+    const appsScriptURL = `https://script.google.com/macros/s/AKfycbylCZoxye71c5LAp-tGoiycMhBSxQGQr0a2enGwPFdiokO4DdsGmBGbhrmOTEIB-Q-E/exec?${queryParams}`;
 
     try {
       await fetch(appsScriptURL);

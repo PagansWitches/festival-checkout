@@ -5,7 +5,11 @@ const { resolve } = require('path');
 require('dotenv').config({ path: './.env' });
 const fetch = require('node-fetch');
 
-app.use(cors());
+app.use(cors({
+  origin: 'https://spectacular-tartufo-bceeb8.netlify.app',
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
+}));
 app.use(express.static("./client"));
 app.use(express.urlencoded({ extended: true }));
 app.use(

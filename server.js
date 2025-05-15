@@ -1,15 +1,19 @@
 const express = require('express');
 const cors = require('cors');
-const app = express(); // THIS is the bit I forgot earlier — now it's in
+const app = express();
 const { resolve } = require('path');
 require('dotenv').config({ path: './.env' });
 const fetch = require('node-fetch');
 
-app.use(cors({
+// Updated CORS block to include credentials
+const corsOptions = {
   origin: 'https://spectacular-tartufo-bceeb8.netlify.app',
   methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type']
-}));
+  allowedHeaders: ['Content-Type'],
+  credentials: true
+};
+
+app.use(cors(corsOptions));
 app.use(express.static("./client"));
 app.use(express.urlencoded({ extended: true }));
 app.use(
@@ -42,7 +46,6 @@ app.post('/create-checkout-session', async (req, res) => {
   const metadata = req.body;
 
   try {
-    // Calculate total amount from ticket metadata
     const prices = {
       "3DayTicket": 4000,
       "AdultSaturdayTicket": 1500,

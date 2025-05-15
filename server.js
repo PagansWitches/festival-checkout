@@ -140,19 +140,19 @@ app.post('/webhook', async (req, res) => {
       "DisabledMondayTicket": session.metadata?.["DisabledMondayTicket"] || 0
     };
 
-    const queryParams = new URLSearchParams({
-      name,
-      email,
-      phone,
-      address,
-      ...ticketTypes
-    }).toString();
-
-    const appsScriptURL = `https://script.google.com/macros/s/AKfycbylCZoxye71c5LAp-tGoiycMhBSxQGQr0a2enGwPFdiokO4DdsGmBGbhrmOTEIB-Q-E/exec?${queryParams}`;
-
     try {
-      await fetch(appsScriptURL);
-      console.log("✅ Logged to Google Sheet");
+      await fetch('https://script.google.com/macros/s/AKfycbylCZoxye71c5LAp-tGoiycMhBSxQGQr0a2enGwPFdiokO4DdsGmBGbhrmOTEIB-Q-E/exec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          name,
+          email,
+          phone,
+          address,
+          ...ticketTypes
+        })
+      });
+      console.log("✅ Logged to Google Sheet via POST");
     } catch (error) {
       console.error("❌ Failed to log to Google Sheet:", error.message);
     }

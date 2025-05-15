@@ -5,22 +5,18 @@ const { resolve } = require('path');
 require('dotenv').config({ path: './.env' });
 const fetch = require('node-fetch');
 
-// Correct CORS config
-const corsOptions = {
-  origin: 'https://spectacular-tartufo-bceeb8.netlify.app',
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type'],
-  credentials: true
-};
-
-// Handle preflight requests properly
-app.options('*', cors(corsOptions));
-app.use(cors(corsOptions));
+// Manual CORS config to be extra explicit
+const allowedOrigin = 'https://spectacular-tartufo-bceeb8.netlify.app';
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'https://spectacular-tartufo-bceeb8.netlify.app');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
-  res.header('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+
   next();
 });
 
@@ -28,7 +24,7 @@ app.use(express.static("./client"));
 app.use(express.urlencoded({ extended: true }));
 app.use(
   express.json({
-    verify: function(req, res, buf) {
+    verify: function (req, res, buf) {
       if (req.originalUrl.startsWith('/webhook')) {
         req.rawBody = buf.toString();
       }
@@ -99,7 +95,7 @@ app.post('/create-checkout-session', async (req, res) => {
       cancel_url: `${baseUrl}/canceled.html`
     });
 
-    return res.redirect(303, session.url);
+    return res.status(200).json({ url: session.url }); // Return JSON instead of redirect
   } catch (error) {
     console.error("❌ Stripe session creation failed:", error.message);
     return res.status(500).json({ error: 'Stripe session creation failed.' });

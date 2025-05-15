@@ -90,6 +90,8 @@ app.post('/webhook', async (req, res) => {
 
     const session = event.data.object;
 
+    console.log("Webhook session object:", session);
+
     const name = session.metadata?.name || 'Unknown';
     const email = session.customer_details?.email || 'no-email@example.com';
     const phone = session.metadata?.phone || '';

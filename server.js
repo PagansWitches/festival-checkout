@@ -5,22 +5,7 @@ const { resolve } = require('path');
 require('dotenv').config({ path: './.env' });
 const fetch = require('node-fetch');
 
-app.use(cors()); // <-- Allow cross-origin requests
-app.use(express.static("./client"));
-app.use(express.urlencoded());
-app.use(
-  express.json({
-    verify: function(req, res, buf) {
-      if (req.originalUrl.startsWith('/webhook')) {
-        req.rawBody = buf.toString();
-      }
-    },
-  })
-);
-
-const baseUrl = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
-
-const stripe = require('stripe')('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', {
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2020-08-27',
   appInfo: {
     name: "FestivalTicketCheckout",
@@ -29,6 +14,17 @@ const stripe = require('stripe')('sk_live_51RNaRWRsTRQij9eYO2UMvQbZLhB5Llyuz3PDp
   }
 });
 
+app.use(cors());
+app.use(express.static("./client"));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json({
+  verify: function (req, res, buf) {
+    if (req.originalUrl.startsWith('/webhook')) {
+      req.rawBody = buf.toString();
+    }
+  }
+}));
+
 app.get('/', (req, res) => {
   const path = resolve('./client/index.html');
   res.sendFile(path);
@@ -36,14 +32,18 @@ app.get('/', (req, res) => {
 
 app.get('/checkout-session', async (req, res) => {
   const { sessionId } = req.query;
-  const session = await stripe.checkout.sessions.retrieve(sessionId);
-  res.send(session);
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    res.send(session);
+  } catch (error) {
+    console.error("Error retrieving session:", error.message);
+    res.status(400).send("Session retrieval failed.");
+  }
 });
 
 app.post('/create-checkout-session', async (req, res) => {
-  const metadata = req.body; // grab all form data as metadata
-
-  console.log("Metadata received at checkout:", metadata);
+  const metadata = req.body;
+  console.log("Metadata received:", metadata);
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -61,14 +61,15 @@ app.post('/create-checkout-session', async (req, res) => {
       }],
       metadata: metadata,
       customer_email: metadata.email,
-      success_url: `${process.env.DOMAIN}`,
-      cancel_url: `${baseUrl}/canceled.html`
+      success_url: process.env.DOMAIN,
+      cancel_url: process.env.CANCEL_URL || 'https://festival-checkout.onrender.com/canceled.html',
     });
 
+    console.log("Stripe session created:", session.id);
     return res.redirect(303, session.url);
   } catch (error) {
-    console.error("❌ Error creating checkout session:", error);
-    return res.status(500).json({ error: 'Failed to create checkout session' });
+    console.error("❌ Failed to create checkout session:", error);
+    return res.status(500).json({ error: 'Stripe session creation failed.' });
   }
 });
 
@@ -76,16 +77,14 @@ app.post('/webhook', async (req, res) => {
   let event;
 
   if (process.env.STRIPE_WEBHOOK_SECRET) {
-    const signature = req.headers['stripe-signature'];
-
     try {
       event = stripe.webhooks.constructEvent(
         req.rawBody,
-        signature,
+        req.headers['stripe-signature'],
         process.env.STRIPE_WEBHOOK_SECRET
       );
     } catch (err) {
-      console.log(`⚠️  Webhook signature verification failed.`);
+      console.log(`⚠️  Webhook signature verification failed.`, err.message);
       return res.sendStatus(400);
     }
   } else {
@@ -93,45 +92,40 @@ app.post('/webhook', async (req, res) => {
   }
 
   if (event.type === 'checkout.session.completed') {
-    console.log(`🔔  Payment received!`);
-
     const session = event.data.object;
-
-    console.log("Webhook session object:", session);
+    console.log("✅ Payment received session:", session.id);
 
     const name = session.metadata?.name || 'Unknown';
     const email = session.customer_details?.email || 'no-email@example.com';
     const phone = session.metadata?.phone || '';
     const address = session.metadata?.address || '';
-    const ticketTypes = {
-      "3DayTicket": session.metadata?.["3DayTicket"] || 0,
-      "AdultSaturdayTicket": session.metadata?.["AdultSaturdayTicket"] || 0,
-      "AdultSundayTicket": session.metadata?.["AdultSundayTicket"] || 0,
-      "AdultMondayTicket": session.metadata?.["AdultMondayTicket"] || 0,
-      "ChildSaturdayTicket": session.metadata?.["ChildSaturdayTicket"] || 0,
-      "ChildSundayTicket": session.metadata?.["ChildSundayTicket"] || 0,
-      "ChildMondayTicket": session.metadata?.["ChildMondayTicket"] || 0,
-      "Disabled3DayTicket": session.metadata?.["Disabled3DayTicket"] || 0,
-      "DisabledSaturdayTicket": session.metadata?.["DisabledSaturdayTicket"] || 0,
-      "DisabledSundayTicket": session.metadata?.["DisabledSundayTicket"] || 0,
-      "DisabledMondayTicket": session.metadata?.["DisabledMondayTicket"] || 0
-    };
+
+    const ticketTypes = [
+      "3DayTicket", "AdultSaturdayTicket", "AdultSundayTicket", "AdultMondayTicket",
+      "ChildSaturdayTicket", "ChildSundayTicket", "ChildMondayTicket",
+      "Disabled3DayTicket", "DisabledSaturdayTicket", "DisabledSundayTicket", "DisabledMondayTicket"
+    ];
+
+    const ticketData = {};
+    ticketTypes.forEach(type => {
+      ticketData[type] = session.metadata?.[type] || 0;
+    });
 
     const queryParams = new URLSearchParams({
       name,
       email,
       phone,
       address,
-      ...ticketTypes
+      ...ticketData
     }).toString();
 
-    const appsScriptURL = `https://script.google.com/macros/s/AKfycbylCZoxye71c5LAp-tGoiycMhBSxQGQr0a2enGwPFdiokO4DdsGmBGbhrmOTEIB-Q-E/exec?${queryParams}`;
+    const appsScriptURL = `https://script.google.com/macros/s/YOUR_SCRIPT_ID_HERE/exec?${queryParams}`;
 
     try {
       await fetch(appsScriptURL);
       console.log("✅ Logged to Google Sheet");
     } catch (error) {
-      console.error("❌ Failed to log to Google Sheet:", error);
+      console.error("❌ Logging to Google Sheet failed:", error.message);
     }
   }
 

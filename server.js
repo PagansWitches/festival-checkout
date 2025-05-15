@@ -41,6 +41,8 @@ app.get('/checkout-session', async (req, res) => {
 app.post('/create-checkout-session', async (req, res) => {
   const metadata = req.body; // grab all form data as metadata
 
+  console.log("Metadata received at checkout:", metadata);
+
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
     line_items: [{

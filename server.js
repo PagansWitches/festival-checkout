@@ -1,20 +1,11 @@
 const express = require('express');
+const cors = require('cors');
 const app = express();
 const { resolve } = require('path');
 require('dotenv').config({ path: './.env' });
 const fetch = require('node-fetch');
 
-const baseUrl = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
-
-const stripe = require('stripe')('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', {
-  apiVersion: '2020-08-27',
-  appInfo: {
-    name: "FestivalTicketCheckout",
-    version: "1.0.0",
-    url: "https://replit.com/@PagansWitches26/Festival-Ticket-Checkout"
-  }
-});
-
+app.use(cors()); // <-- Allow cross-origin requests
 app.use(express.static("./client"));
 app.use(express.urlencoded());
 app.use(
@@ -26,6 +17,17 @@ app.use(
     },
   })
 );
+
+const baseUrl = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+
+const stripe = require('stripe')('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', {
+  apiVersion: '2020-08-27',
+  appInfo: {
+    name: "FestivalTicketCheckout",
+    version: "1.0.0",
+    url: "https://replit.com/@PagansWitches26/Festival-Ticket-Checkout"
+  }
+});
 
 app.get('/', (req, res) => {
   const path = resolve('./client/index.html');
@@ -43,26 +45,31 @@ app.post('/create-checkout-session', async (req, res) => {
 
   console.log("Metadata received at checkout:", metadata);
 
-  const session = await stripe.checkout.sessions.create({
-    mode: 'payment',
-    line_items: [{
-      price_data: {
-        unit_amount: 0,
-        currency: 'gbp',
-        product_data: {
-          name: 'QR Code Generation',
-          description: 'Leave this as-is to generate your custom festival tickets.',
-        }
-      },
-      quantity: 1,
-    }],
-    metadata: metadata,
-    customer_email: metadata.email,
-    success_url: `${process.env.DOMAIN}`,
-    cancel_url: `${baseUrl}/canceled.html`
-  });
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      line_items: [{
+        price_data: {
+          unit_amount: 0,
+          currency: 'gbp',
+          product_data: {
+            name: 'QR Code Generation',
+            description: 'Leave this as-is to generate your custom festival tickets.',
+          }
+        },
+        quantity: 1,
+      }],
+      metadata: metadata,
+      customer_email: metadata.email,
+      success_url: `${process.env.DOMAIN}`,
+      cancel_url: `${baseUrl}/canceled.html`
+    });
 
-  return res.redirect(303, session.url);
+    return res.redirect(303, session.url);
+  } catch (error) {
+    console.error("❌ Error creating checkout session:", error);
+    return res.status(500).json({ error: 'Failed to create checkout session' });
+  }
 });
 
 app.post('/webhook', async (req, res) => {

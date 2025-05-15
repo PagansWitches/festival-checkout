@@ -5,15 +5,18 @@ const { resolve } = require('path');
 require('dotenv').config({ path: './.env' });
 const fetch = require('node-fetch');
 
-// Updated CORS block to include credentials
+// Correct CORS config
 const corsOptions = {
   origin: 'https://spectacular-tartufo-bceeb8.netlify.app',
-  methods: ['GET', 'POST'],
+  methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type'],
   credentials: true
 };
 
+// Handle preflight requests properly
+app.options('*', cors(corsOptions));
 app.use(cors(corsOptions));
+
 app.use(express.static("./client"));
 app.use(express.urlencoded({ extended: true }));
 app.use(
